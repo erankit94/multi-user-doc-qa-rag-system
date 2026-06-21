@@ -13,8 +13,8 @@ __pycache__/
 chroma_db/
 backend/data/
 
-# PDFs — remove this line only if you have permission to publish them
-data/pdfs/*.pdf
+# # PDFs — remove this line only if you have permission to publish them
+# data/pdfs/*.pdf
 
 # Editors and OS
 .vscode/

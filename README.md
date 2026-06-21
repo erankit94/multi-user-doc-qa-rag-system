@@ -19,19 +19,16 @@ Streamlit UI -> FastAPI -> ChromaDB
 | Backend | FastAPI |
 | Frontend | Streamlit |
 
-## Included assignment functionality
+## Included functionalities
 
-- Dummy email login for three users
+- Email login for three users
 - One- or two-company access per user
 - Server-side company filtering during vector search
 - Per-session conversational history and context-aware follow-up retrieval
 - Isolated chat histories for simultaneous users
 - Answer source metadata and retrieved excerpts
 - Five sample Q4 2025 earnings-call PDFs
-- Basic web UI for login, chat, source viewing, clearing chat, and logout
-
-PDF ingestion is intentionally performed with the included command-line script.
-There is no admin upload feature because it is not required by the assignment.
+- Web UI for login, chat, source viewing, clearing chat, and logout
 
 ## Demo users
 

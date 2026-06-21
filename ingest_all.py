@@ -20,16 +20,23 @@ from backend.ingest import ingest_pdf, list_ingested
 # ---------------------------------------------------------------------------
 # Edit this map: { pdf_filename_in_data/pdfs/ : company_tag }
 # ---------------------------------------------------------------------------
-PDF_MAP = {
-    "Alphabet_Q4_2025.pdf": "GOOGLE",
-    "AMD_Q4_2025.pdf": "AMD",
-    "META_Q4_2025.pdf": "META",
-    "Microsoft_Q4_2025.pdf": "MSFT",
-    "Netflix_Q4_2025.pdf": "NFLX",
-}
+# PDF_MAP = {
+#     "Alphabet_Q4_2025.pdf": "GOOGLE",
+#     "AMD_Q4_2025.pdf": "AMD",
+#     "META_Q4_2025.pdf": "META",
+#     "Microsoft_Q4_2025.pdf": "MSFT",
+#     "Netflix_Q4_2025.pdf": "NFLX",
+# }
 
 PDF_DIR = ROOT / "data" / "pdfs"
 
+# Auto-detect all PDFs in data/pdfs/
+# Filename convention: <COMPANY_TAG>_anything.pdf
+# e.g. AAPL_Q4_2025.pdf → company tag = "AAPL"
+PDF_MAP = {}
+for pdf_file in PDF_DIR.glob("*.pdf"):
+    company_tag = pdf_file.stem.split("_")[0].upper()  # "AAPL_Q4_2025" → "AAPL"
+    PDF_MAP[pdf_file.name] = company_tag
 
 def main():
     print("=" * 60)
