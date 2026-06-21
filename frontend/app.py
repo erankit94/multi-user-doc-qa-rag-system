@@ -81,13 +81,13 @@ def show_login():
     with col2:
         with st.container(border=True):
             st.subheader("🔐 Sign In")
-            st.caption("Use one of the demo accounts below:")
+            st.caption("Use one of the accounts below:")
 
             # Quick-select buttons
             demo_users = {
-                "Alice (GOOGL only)":        "alice@email.com",
-                "Bob (AMD + META)":       "bob@email.com",
-                "Charlie (MSFT + NFLX)":    "charlie@email.com",
+                "Alice":        "alice@email.com",
+                "Bob":       "bob@email.com",
+                "Charlie":    "charlie@email.com",
             }
             for label, email in demo_users.items():
                 if st.button(label, use_container_width=True, key=f"demo_{email}"):
@@ -131,7 +131,7 @@ def show_sidebar():
 
         # Ingestion status
         with st.expander("📦 Ingestion Status", expanded=False):
-            r = api_get("/ingestion-status")
+            r = api_get("/ingestion-status", headers=auth_headers())
             if r.status_code == 200:
                 items = r.json().get("ingested", [])
                 if items:
@@ -141,28 +141,6 @@ def show_sidebar():
                             st.caption(f"  • {f}")
                 else:
                     st.info("No documents ingested yet.")
-
-        st.divider()
-
-        # Upload & ingest
-        with st.expander("⬆️ Upload PDF (Admin)", expanded=False):
-            company_tag = st.text_input("Company tag (e.g. AAPL)", key="ingest_company").upper()
-            uploaded = st.file_uploader("Select PDF", type=["pdf"], key="ingest_file")
-            if st.button("Ingest PDF", key="ingest_btn"):
-                if uploaded and company_tag:
-                    with st.spinner("Ingesting…"):
-                        r = httpx.post(
-                            f"{API_BASE}/ingest",
-                            data={"company": company_tag},
-                            files={"file": (uploaded.name, uploaded.getvalue(), "application/pdf")},
-                            timeout=300,
-                        )
-                    if r.status_code == 200:
-                        st.success(r.json()["message"])
-                    else:
-                        st.error(r.json().get("detail", "Ingestion failed"))
-                else:
-                    st.warning("Provide both a company tag and a PDF.")
 
         st.divider()
 
@@ -212,6 +190,8 @@ def show_chat():
                                 f"Page {src['page_num']} · "
                                 f"Relevance: `{src['score']:.2%}`"
                             )
+                            if src.get("excerpt"):
+                                st.caption(src["excerpt"])
 
     # --- Input box ---
     if question := st.chat_input("Ask a question about the earnings calls…"):
@@ -245,6 +225,8 @@ def show_chat():
                                 f"Page {src['page_num']} · "
                                 f"Relevance: `{src['score']:.2%}`"
                             )
+                            if src.get("excerpt"):
+                                st.caption(src["excerpt"])
 
                 st.session_state.messages.append({
                     "role": "assistant",

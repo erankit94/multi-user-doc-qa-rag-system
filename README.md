@@ -1,199 +1,144 @@
-# 📄 Multi-User Document Search & Conversational Q&A System
+# Multi-User Document Search & Conversational Q&A
 
-A RAG (Retrieval-Augmented Generation) system that lets multiple users query earnings-call PDFs through a chat UI, with **server-enforced document access control** and **per-user conversational memory**.
-
----
+A Python RAG application for querying earnings-call PDFs with server-enforced
+document access control, per-session conversation history, and a Streamlit UI.
 
 ## Architecture
 
-```
-Streamlit UI  ──►  FastAPI Backend  ──►  ChromaDB (vector store)
-                        │
-                        ▼
-                  Claude API (claude-sonnet-4-6)
+```text
+Streamlit UI -> FastAPI -> ChromaDB
+                         -> OpenAI API
 ```
 
 | Component | Technology |
 |---|---|
-| Embeddings | `sentence-transformers` (all-MiniLM-L6-v2, runs locally) |
-| Vector DB | ChromaDB (local persistent store) |
-| LLM | Anthropic Claude (claude-sonnet-4-6) |
-| PDF parsing | pdfplumber (text + tables) |
-| Backend API | FastAPI |
-| Frontend UI | Streamlit |
+| Embeddings | OpenAI `text-embedding-3-small` |
+| Vector database | ChromaDB (local persistent store) |
+| Answer generation | OpenAI Responses API |
+| PDF parsing | pdfplumber |
+| Backend | FastAPI |
+| Frontend | Streamlit |
 
----
+## Included assignment functionality
 
-## Project Structure
+- Dummy email login for three users
+- One- or two-company access per user
+- Server-side company filtering during vector search
+- Per-session conversational history and context-aware follow-up retrieval
+- Isolated chat histories for simultaneous users
+- Answer source metadata and retrieved excerpts
+- Five sample Q4 2025 earnings-call PDFs
+- Basic web UI for login, chat, source viewing, clearing chat, and logout
 
-```
-rag_system/
-├── backend/
-│   ├── auth.py        # User → company access map + session tokens
-│   ├── ingest.py      # PDF → chunks → embeddings → ChromaDB
-│   ├── retrieval.py   # Vector search with company-level filter
-│   ├── session.py     # Per-user conversation history
-│   └── qa.py          # Claude API call (RAG + history)
-├── frontend/
-│   └── app.py         # Streamlit chat UI
-├── data/
-│   └── pdfs/          # ← put your earnings-call PDFs here
-├── chroma_db/         # Auto-created on first ingest
-├── main.py            # FastAPI app entry point
-├── ingest_all.py      # One-shot ingestion script
-├── requirements.txt
-└── README.md
-```
+PDF ingestion is intentionally performed with the included command-line script.
+There is no admin upload feature because it is not required by the assignment.
 
----
+## Demo users
+
+| User | Email | Accessible companies |
+|---|---|---|
+| Alice | `alice@email.com` | GOOGLE |
+| Bob | `bob@email.com` | AMD, META |
+| Charlie | `charlie@email.com` | MSFT, NFLX |
 
 ## Setup
 
-### 1. Clone & install dependencies
+1. Install dependencies:
 
-```bash
-git clone <your-repo-url>
-cd rag_system
-pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Set your OpenAI API key:
+
+   PowerShell:
+
+   ```powershell
+   $env:OPENAI_API_KEY="your-api-key"
+   ```
+
+   macOS/Linux:
+
+   ```bash
+   export OPENAI_API_KEY="your-api-key"
+   ```
+
+3. Ingest the sample PDFs:
+
+   ```bash
+   python ingest_all.py
+   ```
+
+   Ingestion calls the OpenAI embeddings API, so `OPENAI_API_KEY` must be set.
+   The default embedding model is `text-embedding-3-small` with 1536
+   dimensions.
+
+4. Start the backend:
+
+   ```bash
+   uvicorn main:app --reload --port 8000
+   ```
+
+5. In a second terminal, start the UI:
+
+   ```bash
+   streamlit run frontend/app.py
+   ```
+
+6. Open `http://localhost:8501`.
+
+## Important migration note
+
+Older project data was embedded with `all-MiniLM-L6-v2`. OpenAI embeddings have
+a different vector size, so run `python ingest_all.py` once after updating.
+The application uses a model-specific Chroma collection and will not mix the
+old vectors with the new OpenAI vectors.
+
+## Optional configuration
+
+```powershell
+$env:OPENAI_MODEL="gpt-4.1"
+$env:OPENAI_EMBEDDING_MODEL="text-embedding-3-small"
+$env:OPENAI_EMBEDDING_DIMENSIONS="1536"
+$env:API_BASE="http://localhost:8000"
 ```
 
-### 2. Set your Anthropic API key
+If the embedding model or dimensions change, rerun `python ingest_all.py`.
 
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+## Sample documents
+
+The `data/pdfs/` directory contains:
+
+```text
+Alphabet_Q4_2025.pdf
+AMD_Q4_2025.pdf
+META_Q4_2025.pdf
+Microsoft_Q4_2025.pdf
+Netflix_Q4_2025.pdf
 ```
 
-### 3. Add your earnings-call PDFs
+Their company tags are configured in `ingest_all.py` and must match
+`backend/auth.py`.
 
-Copy your Q4 2025 earnings-call transcript PDFs into `data/pdfs/`:
+## Demo checklist
 
-```
-data/pdfs/
-├── AAPL_Q4_2025.pdf
-├── GOOGL_Q4_2025.pdf
-├── MSFT_Q4_2025.pdf
-├── AMZN_Q4_2025.pdf
-└── META_Q4_2025.pdf
-```
+1. Log in as Alice and ask a question about Alphabet/Google revenue.
+2. Log in as Bob in another browser session and query AMD or Meta.
+3. Verify that Alice cannot retrieve Bob's company documents and vice versa.
+4. Ask a short follow-up such as "How did that compare with the prior quarter?"
+5. Expand Sources to show the authorized document, page, score, and excerpt.
+6. Log in as Charlie and repeat with Microsoft or Netflix.
 
-> **Filename format:** `<COMPANY_TAG>_Q4_2025.pdf`  
-> The company tag must match the tags in `backend/auth.py` → `USER_ACCESS`.
-
-### 4. Ingest the PDFs
-
-```bash
-python ingest_all.py
-```
-
-This parses each PDF, splits it into ~500-word chunks, embeds them with a local model, and stores them in ChromaDB. **Run once.** Re-running is idempotent (upsert).
-
-### 5. Start the FastAPI backend
-
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-### 6. Start the Streamlit frontend (new terminal)
-
-```bash
-streamlit run frontend/app.py
-```
-
-Open http://localhost:8501 in your browser.
-
----
-
-## Demo Users
-
-| User | Email | Accessible Companies |
-|---|---|---|
-| Alice | `alice@email.com` | AAPL |
-| Bob | `bob@email.com` | GOOGL, MSFT |
-| Charlie | `charlie@email.com` | AMZN, META |
-
----
-
-## How to Demo
-
-### 1. Access isolation
-1. Log in as **Alice** → ask *"What was the revenue in Q4?"*  
-   → Returns only AAPL data.
-2. Log out → log in as **Bob** → ask the same question  
-   → Returns only GOOGL/MSFT data. Alice's AAPL docs are invisible.
-
-### 2. Conversational follow-up
-1. Log in as **Bob**, ask *"What was Microsoft's operating income in Q4 2025?"*
-2. Follow up: *"How does that compare to the previous quarter?"*  
-   → The system uses the earlier answer as context.
-3. Follow up: *"What did the CFO say about margins?"*  
-   → Still remembers the thread.
-
-### 3. Query isolation across users
-- Open two browser tabs (use incognito for one).  
-- Log in as different users simultaneously.  
-- Their conversation histories and document access are completely independent.
-
----
-
-## Key Design Decisions
-
-### 1. Access control is server-enforced
-The ChromaDB `where` filter (`{"company": {"$in": allowed_companies}}`) is applied **inside the database layer**, not in the application layer. A user cannot retrieve chunks from unauthorised companies even if they manipulate the query.
-
-### 2. Overlapping chunks prevent cut-off answers
-Chunks are 500 words with an 80-word overlap. This ensures that answers spanning a page boundary are captured in at least one chunk.
-
-### 3. Context-injected prompting
-Each Claude call receives:
-- A strict system prompt instructing it to use only the provided context
-- The last 10 conversation turns (sliding window)
-- The retrieved chunks wrapped in `<context>` tags
-
-### 4. Stateless retrieval, stateful conversation
-Retrieval is fresh per query (the best chunks for *this* question). The LLM sees the conversation history to maintain context. The two concerns are separated.
-
-### 5. Tables are handled
-`pdfplumber` extracts both body text and tables. Tables are serialised as tab-separated rows so the LLM can reason over financial figures without special handling.
-
----
-
-## Adding More Users or Companies
-
-Edit `backend/auth.py`:
-
-```python
-USER_ACCESS = {
-    "alice@email.com":   ["AAPL"],
-    "bob@email.com":     ["GOOGL", "MSFT"],
-    "charlie@email.com": ["AMZN", "META"],
-    # Add more users here ↓
-    "david@email.com":   ["NVDA"],
-}
-```
-
-Then ingest the new PDF:
-
-```bash
-python -c "
-from backend.ingest import ingest_pdf
-ingest_pdf('data/pdfs/NVDA_Q4_2025.pdf', 'NVDA')
-"
-```
-
----
-
-## API Reference
+## API endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/login` | `{"email": "..."}` → session token |
-| POST | `/logout` | Invalidate token |
-| GET | `/me` | Current user info |
-| POST | `/query` | `{"question": "..."}` → answer + sources |
-| POST | `/clear-history` | Reset conversation |
-| GET | `/ingestion-status` | What's in ChromaDB |
-| POST | `/ingest` | Upload + ingest a PDF (admin) |
+| POST | `/login` | Authenticate a dummy email and create a session |
+| POST | `/logout` | Invalidate the session |
+| GET | `/me` | Return the current user |
+| POST | `/query` | Retrieve authorized context and generate an answer |
+| POST | `/clear-history` | Clear the current conversation |
+| GET | `/ingestion-status` | List the user's authorized ingested documents |
+| GET | `/health` | Health check |
 
-All protected endpoints require the `X-Session-Token` header.
-
-Interactive docs: http://localhost:8000/docs
+Protected endpoints use the `X-Session-Token` header.

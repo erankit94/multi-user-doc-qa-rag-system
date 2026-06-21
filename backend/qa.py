@@ -55,8 +55,17 @@ def answer(
           "sources": [{"company", "filename", "page_num", "score"}, ...],
         }
     """
-    # 1. Retrieve relevant chunks (access-controlled)
-    chunks = retrieve(query, allowed_companies, top_k=top_k)
+    # 1. Retrieve relevant chunks (access-controlled). Include recent user
+    # questions so short follow-ups such as "How did that compare?" retain
+    # enough context for semantic search, not only for final answer generation.
+    history = session_store.get_history(token)
+    recent_user_questions = [
+        message["content"]
+        for message in history[-6:]
+        if message["role"] == "user"
+    ]
+    retrieval_query = "\n".join(recent_user_questions + [query])
+    chunks = retrieve(retrieval_query, allowed_companies, top_k=top_k)
 
     if not chunks:
         no_data = (
@@ -77,8 +86,6 @@ def answer(
     context_block = "\n\n---\n\n".join(context_lines)
 
     # 3. Build messages array = history + new user turn
-    history = session_store.get_history(token)
-
     user_turn_content = (
         f"<context>\n{context_block}\n</context>\n\n"
         f"Question: {query}"
@@ -114,6 +121,7 @@ def answer(
                 "filename": chunk["filename"],
                 "page_num": chunk["page_num"],
                 "score":    chunk["score"],
+                "excerpt":  chunk["text"],
             })
 
     return {"answer": answer_text, "sources": sources}

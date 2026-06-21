@@ -6,26 +6,16 @@ meaning a user physically cannot receive chunks from companies they are not
 authorised to view — regardless of what they type in the query box.
 """
 
-from typing import Optional
-from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.config import Settings
 from pathlib import Path
+from backend.embeddings import collection_name, embed_texts
 
 CHROMA_DIR = Path(__file__).parent.parent / "chroma_db"
-COLLECTION_NAME = "documents"
-EMBED_MODEL = "all-MiniLM-L6-v2"
+COLLECTION_NAME = collection_name()
 TOP_K = 5          # number of chunks to retrieve per query
 
-_embedder: Optional[SentenceTransformer] = None
 _collection = None
-
-
-def _get_embedder() -> SentenceTransformer:
-    global _embedder
-    if _embedder is None:
-        _embedder = SentenceTransformer(EMBED_MODEL)
-    return _embedder
 
 
 def _get_collection():
@@ -62,9 +52,7 @@ def retrieve(
     if not allowed_companies:
         return []
 
-    query_embedding = _get_embedder().encode(
-        query, normalize_embeddings=True
-    ).tolist()
+    query_embedding = embed_texts([query])[0]
 
     # Build ChromaDB where-filter
     if len(allowed_companies) == 1:

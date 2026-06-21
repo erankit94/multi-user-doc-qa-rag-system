@@ -8,19 +8,15 @@ Endpoints:
   POST /query            → submit a question, get answer + sources
   POST /clear-history    → reset conversation for the session
   GET  /ingestion-status → list what's been ingested into ChromaDB
-  POST /ingest           → (admin) trigger ingestion of a PDF
 """
 
-import os
-from pathlib import Path
-from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-import shutil
 
 from backend import auth, session as session_store
-from backend.ingest import ingest_pdf, list_ingested
+from backend.ingest import list_ingested
 from backend.qa import answer
 
 app = FastAPI(title="Multi-User Document Q&A API", version="1.0.0")
@@ -31,10 +27,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-DATA_DIR = Path(__file__).parent / "data" / "pdfs"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-
 
 # ---------------------------------------------------------------------------
 # Request/Response models
@@ -116,25 +108,9 @@ def clear_history(x_session_token: Optional[str] = Header(None)):
 
 
 @app.get("/ingestion-status")
-def ingestion_status():
-    return {"ingested": list_ingested()}
-
-
-@app.post("/ingest")
-def ingest(
-    company: str = Form(...),
-    file: UploadFile = File(...),
-):
-    """Admin endpoint: upload a PDF and ingest it into ChromaDB."""
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
-
-    dest = DATA_DIR / file.filename
-    with dest.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    count = ingest_pdf(str(dest), company.upper())
-    return {"message": f"Ingested {count} chunks", "company": company.upper(), "file": file.filename}
+def ingestion_status(x_session_token: Optional[str] = Header(None)):
+    user, _ = _require_user(x_session_token)
+    return {"ingested": list_ingested(user["allowed_companies"])}
 
 
 @app.get("/health")

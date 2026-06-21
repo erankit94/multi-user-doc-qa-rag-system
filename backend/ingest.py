@@ -4,7 +4,7 @@ ingest.py — PDF ingestion pipeline.
 Steps:
   1. Parse PDF pages with pdfplumber (handles text + tables).
   2. Chunk text into overlapping windows (~500 tokens each).
-  3. Embed chunks with sentence-transformers (all-MiniLM-L6-v2).
+  3. Embed chunks with the OpenAI embeddings API.
   4. Store chunks + embeddings + metadata in ChromaDB.
 
 Usage (standalone):
@@ -13,40 +13,28 @@ Usage (standalone):
 
 import argparse
 import hashlib
-import os
-import re
 from pathlib import Path
 from typing import Generator
 
 import chromadb
 import pdfplumber
 from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
+from backend.embeddings import EMBED_MODEL, collection_name, embed_texts
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 CHROMA_DIR = Path(__file__).parent.parent / "chroma_db"
-COLLECTION_NAME = "documents"
-EMBED_MODEL = "all-MiniLM-L6-v2"
+COLLECTION_NAME = collection_name()
 CHUNK_SIZE = 500      # approximate tokens (1 token ≈ 4 chars, so ~2000 chars)
 CHUNK_OVERLAP = 80    # token overlap between consecutive chunks
 
-_embedder: SentenceTransformer | None = None
 _collection = None
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _get_embedder() -> SentenceTransformer:
-    global _embedder
-    if _embedder is None:
-        print(f"[ingest] Loading embedding model: {EMBED_MODEL}")
-        _embedder = SentenceTransformer(EMBED_MODEL)
-    return _embedder
-
 
 def _get_collection():
     global _collection
@@ -136,10 +124,9 @@ def ingest_pdf(pdf_path: str, company: str) -> int:
     pages = _extract_text_from_pdf(pdf_path)
     print(f"[ingest] Extracted {len(pages)} pages")
 
-    embedder = _get_embedder()
     collection = _get_collection()
 
-    all_ids, all_docs, all_embeddings, all_metas = [], [], [], []
+    all_ids, all_docs, all_metas = [], [], []
 
     for page_data in pages:
         page_num = page_data["page_num"]
@@ -149,11 +136,9 @@ def ingest_pdf(pdf_path: str, company: str) -> int:
                 continue
 
             chunk_id = _chunk_id(company, filename, page_num, chunk_idx)
-            embedding = embedder.encode(chunk, normalize_embeddings=True).tolist()
 
             all_ids.append(chunk_id)
             all_docs.append(chunk)
-            all_embeddings.append(embedding)
             all_metas.append({
                 "company": company,
                 "filename": filename,
@@ -168,10 +153,15 @@ def ingest_pdf(pdf_path: str, company: str) -> int:
     # Upsert in batches of 100
     batch_size = 100
     for i in range(0, len(all_ids), batch_size):
+        batch_docs = all_docs[i:i+batch_size]
+        print(
+            f"[ingest] Embedding batch {i // batch_size + 1} "
+            f"with {EMBED_MODEL} ({len(batch_docs)} chunks)"
+        )
         collection.upsert(
             ids=all_ids[i:i+batch_size],
-            documents=all_docs[i:i+batch_size],
-            embeddings=all_embeddings[i:i+batch_size],
+            documents=batch_docs,
+            embeddings=embed_texts(batch_docs),
             metadatas=all_metas[i:i+batch_size],
         )
 
@@ -183,7 +173,7 @@ def ingest_directory(pdf_dir: str, company_map: dict[str, str]) -> dict[str, int
     """
     Ingest multiple PDFs.
     company_map: {filename_stem: company_tag}
-    e.g. {"AAPL_Q4_2025": "AAPL", "GOOGL_Q4_2025": "GOOGL"}
+    e.g. {"AAPL_Q4_2025": "AAPL", "Alphabet_Q4_2025": "GOOGLE"}
     """
     results = {}
     for stem, company in company_map.items():
@@ -195,15 +185,20 @@ def ingest_directory(pdf_dir: str, company_map: dict[str, str]) -> dict[str, int
     return results
 
 
-def list_ingested() -> list[dict]:
-    """Return a summary of what's already in ChromaDB."""
+def list_ingested(allowed_companies: list[str] | None = None) -> list[dict]:
+    """Return an optionally access-filtered summary of ingested documents."""
     collection = _get_collection()
     result = collection.get(include=["metadatas"])
+    metadatas = result["metadatas"]
+    if allowed_companies is not None:
+        allowed = set(allowed_companies)
+        metadatas = [meta for meta in metadatas if meta["company"] in allowed]
+
     companies: dict[str, set] = {}
-    for meta in result["metadatas"]:
+    for meta in metadatas:
         c = meta["company"]
         companies.setdefault(c, set()).add(meta["filename"])
-    return [{"company": c, "files": list(files), "chunks": sum(1 for m in result["metadatas"] if m["company"] == c)}
+    return [{"company": c, "files": list(files), "chunks": sum(1 for m in metadatas if m["company"] == c)}
             for c, files in companies.items()]
 
 

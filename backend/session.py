@@ -2,7 +2,7 @@
 session.py — Per-user conversational session management.
 
 Each session token maps to a rolling message history (list of
-{role, content} dicts) that is passed verbatim to the Claude API,
+{role, content} dicts) that is passed to the OpenAI API,
 giving the model full conversational context.
 
 History is kept in-memory; for production you'd back this with Redis.
