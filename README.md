@@ -73,26 +73,20 @@ There is no admin upload feature because it is not required by the assignment.
    The default embedding model is `text-embedding-3-small` with 1536
    dimensions.
 
-4. Start the backend:
+4. Start the backend and check for status:
 
    ```bash
-   uvicorn main:app --reload --port 8000
+   python -m uvicorn main:app --reload --port 8000
+   Invoke-RestMethod http://localhost:8000/health
    ```
 
 5. In a second terminal, start the UI:
 
    ```bash
-   streamlit run frontend/app.py
+   spython -m streamlit run frontend/app.py
    ```
 
 6. Open `http://localhost:8501`.
-
-## Important migration note
-
-Older project data was embedded with `all-MiniLM-L6-v2`. OpenAI embeddings have
-a different vector size, so run `python ingest_all.py` once after updating.
-The application uses a model-specific Chroma collection and will not mix the
-old vectors with the new OpenAI vectors.
 
 ## Optional configuration
 
