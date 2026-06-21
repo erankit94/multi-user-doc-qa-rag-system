@@ -83,7 +83,7 @@ There is no admin upload feature because it is not required by the assignment.
 5. In a second terminal, start the UI:
 
    ```bash
-   spython -m streamlit run frontend/app.py
+   python -m streamlit run frontend/app.py
    ```
 
 6. Open `http://localhost:8501`.
