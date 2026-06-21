@@ -11,9 +11,9 @@ from typing import Optional
 # Adjust company keys to match exactly what you tag PDFs with during ingestion
 # ---------------------------------------------------------------------------
 USER_ACCESS: dict[str, list[str]] = {
-    "alice@email.com":   ["Alphabet"],
+    "alice@email.com":   ["GOOGLE"],
     "bob@email.com":     ["AMD", "META"],
-    "charlie@email.com": ["Microsoft", "Netflix"],
+    "charlie@email.com": ["MSFT", "NFLX"],
 }
 
 # In-memory session store: token → email

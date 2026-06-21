@@ -21,11 +21,11 @@ from backend.ingest import ingest_pdf, list_ingested
 # Edit this map: { pdf_filename_in_data/pdfs/ : company_tag }
 # ---------------------------------------------------------------------------
 PDF_MAP = {
-    "Alphabet_Q4_2025.pdf": "Alphabet",
+    "Alphabet_Q4_2025.pdf": "GOOGLE",
     "AMD_Q4_2025.pdf": "AMD",
     "META_Q4_2025.pdf": "META",
-    "Microsoft_Q4_2025.pdf": "Microsoft",
-    "Netflix_Q4_2025.pdf": "Netflix",
+    "Microsoft_Q4_2025.pdf": "MSFT",
+    "Netflix_Q4_2025.pdf": "NFLX",
 }
 
 PDF_DIR = ROOT / "data" / "pdfs"
