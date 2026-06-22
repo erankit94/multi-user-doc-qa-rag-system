@@ -6,8 +6,10 @@ document access control, per-session conversation history, and a Streamlit UI.
 ## Architecture
 
 ```text
-Streamlit UI -> FastAPI -> ChromaDB
-                         -> OpenAI API
+Streamlit UI  ──►  FastAPI Backend  ──►  ChromaDB (vector store)
+                        │
+                        ▼
+                  OpenAI API
 ```
 
 | Component | Technology |
@@ -114,7 +116,7 @@ Their company tags are configured in `ingest_all.py` and must match
 ## Demo checklist
 
 1. Log in as Alice and ask a question about Alphabet/Google revenue like "What was revenue in Q4?"
-2. Log in as Bob in another browser session and query about Google like "What was revenue of Google in Q4 2025?"
+2. Log in as Bob in another browser session and query about Google like "What was revenue of Google in Q4 2025?". For Bob, It shouldn't return the answer as he doesn't have access to Google documents.
 3. Verify that Alice cannot retrieve Bob's company documents and vice versa.
 4. Log in as Charlie, Ask "What were Microsoft's top 5 business highlights in FY25 Q4?" and few follow up questions like "Which one showed the strongest growth, and what factors did management say were driving it?" and "How does Microsoft's outlook for next quarter relate to that business area, and are there any constraints or risks mentioned?"
 5. Expand Sources to show the authorized document, page, score, and excerpt.
@@ -123,7 +125,7 @@ Their company tags are configured in `ingest_all.py` and must match
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/login` | Authenticate a dummy email and create a session |
+| POST | `/login` | Authenticate a email and create a session |
 | POST | `/logout` | Invalidate the session |
 | GET | `/me` | Return the current user |
 | POST | `/query` | Retrieve authorized context and generate an answer |

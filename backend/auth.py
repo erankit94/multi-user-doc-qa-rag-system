@@ -1,10 +1,10 @@
 """
 auth.py — Simulated authentication and access control.
-Maps dummy email IDs to the companies they are allowed to access.
+Maps email IDs to the companies they are allowed to access.
 """
 
 import uuid
-from typing import Optional
+from typing import Optional 
 
 # ---------------------------------------------------------------------------
 # User → Company Access Map
@@ -55,5 +55,5 @@ def logout(token: str) -> bool:
 
 
 def list_users() -> list[str]:
-    """Return all known user emails (for demo/testing)."""
+    """Return all known user emails (for testing)."""
     return list(USER_ACCESS.keys())

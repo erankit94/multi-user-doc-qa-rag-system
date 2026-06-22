@@ -5,7 +5,7 @@ Each session token maps to a rolling message history (list of
 {role, content} dicts) that is passed to the OpenAI API,
 giving the model full conversational context.
 
-History is kept in-memory; for production you'd back this with Redis.
+History is kept in-memory; for production I would back this with Redis.
 """
 
 from typing import Optional

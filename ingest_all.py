@@ -52,7 +52,7 @@ def main():
         print(f"\n→ Ingesting {filename} as {company}…")
         count = ingest_pdf(str(pdf_path), company)
         print(f"  ✓  {count} chunks stored")
-        any_ingested = True
+        any_ingested = True 
 
     if not any_ingested:
         print(
