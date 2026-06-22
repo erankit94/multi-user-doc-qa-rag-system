@@ -3,6 +3,11 @@
 A Python RAG application for querying earnings-call PDFs with server-enforced
 document access control, per-session conversation history, and a Streamlit UI.
 
+## Demo Video
+
+🎥 Loom Demo:
+https://www.loom.com/share/7b47eaedd5e24d0294d2f511cbe61887
+
 ## Architecture
 
 ```text
